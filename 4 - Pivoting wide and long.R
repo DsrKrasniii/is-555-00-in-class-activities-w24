@@ -161,7 +161,50 @@ ri %>%
   group_by(religion) %>% 
   slice_max(household_count, with_ties = F)
 
+bnames %>% 
+  pivot_wider(
+    names_from = year,
+    values_from = n
+  ) %>% 
+  filter(name == 'Jessica',
+         sex == 'F') %>% 
 
+  
+bnames %>% 
+  pivot_wider(
+    names_from = sex,
+    values_from = n
+  ) %>% 
+  filter(name == 'Jessica') %>% 
+  slice_max(F)
+
+
+bob_long <- bob %>% 
+  pivot_longer(
+    cols = !episode:title,
+    names_to = 'attribute',
+    values_to = 'is_present'
+  ) %>% 
+  filter(is_present == 1)
+
+bob_long %>% 
+  group_by(attribute) %>% 
+  summarize(frequency = sum(is_present)) %>% 
+  arrange(desc(frequency)) %>% 
+  print(n=100)
+
+
+bob_long %>% 
+  group_by(season) %>% 
+  summarize(mount_count = sum(str_detect(attribute, 'mountain') & is_present == 1)) %>% 
+  arrange(desc(mount_count))
+
+
+bob_wide <- bob_long %>% 
+  select(attribute, season, is_present) %>% 
+  group_by(season, attribute) %>% 
+  summarize(attribute_count = sum(is_present)) %>% 
+  pivot_wider(names_from = season, values_from = attribute_count)
 
 
 
