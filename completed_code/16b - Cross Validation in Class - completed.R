@@ -8,6 +8,8 @@ cars <- read_csv('https://www.dropbox.com/scl/fi/xavej23qpauvx3xfdq7zh/car_sales
 
 cars %>% glimpse
 
+cars %>% count(model) %>% arrange(desc(n))
+
 set.seed(42)
 cars_split <- initial_split(cars, strata = sellingprice_log)
 cars_training <- cars_split %>% training()
@@ -26,25 +28,43 @@ cars_rec <- recipe(sellingprice_log ~.,
   step_dummy(all_nominal_predictors())
 
 # cars_rec %>% prep() %>% juice() %>% glimpse()
+# cars_rec %>% prep() %>% bake(new_data = cars_testing)
 
+cars_testing %>% 
+  filter(make == 'audi')
+cars_training %>% 
+  filter(make == 'audi')
 
 
 # Now we'll make a workflow:
 xgb_spec <- boost_tree() %>% 
   set_mode('regression')
 
+# lr_spec <- linear_reg() %>% 
+#   set_mode('regression')
+
 cars_wkfl <- workflow() %>% 
   add_model(xgb_spec) %>% 
   add_recipe(cars_rec)
 
-
 # And we'll use dedicated functions to get a crossvalidation object and
 # perform the fit
+set.seed(42)
+cars_folds <- vfold_cv(data = cars_training, strata = sellingprice_log, v = 5, repeats = 2)
+
+# BONUS: you can do a cross-validation in parallel using the doParallel package.
+# (This tends to work a bit better on Mac/Linux platforms)
+doParallel::registerDoParallel()
+
+cars_cv_fit <- cars_wkfl %>% 
+  fit_resamples(resamples = cars_folds)
 
 
+# You can then pull the summarized metrics out of the fit object:
+cars_cv_fit %>% collect_metrics()
 
-
-
+# Or use `summarize = FALSE` to pull the metrics for each of the individual runs.
+cars_cv_fit %>% collect_metrics(summarize = FALSE)
 
 
 
@@ -109,5 +129,16 @@ claims_wkfl <- workflow() %>%
 
 #Lastly, cross-validation!
 
+claims_folds <- vfold_cv(claims_training, strata = log_loss)
 
+# Register the parallel backend to make the resampling go fast:
+doParallel::registerDoParallel()
 
+claims_cv_fit <- claims_wkfl %>% 
+  fit_resamples(resamples = claims_folds)
+
+# You can then pull the summarized metrics out of the fit object:
+claims_cv_fit %>% collect_metrics()
+
+# Or use `summarize = FALSE` to pull the metrics for each of the individual runs.
+claims_cv_fit %>% collect_metrics(summarize = FALSE)
