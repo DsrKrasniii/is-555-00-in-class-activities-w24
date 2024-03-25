@@ -5,6 +5,7 @@ library(tidymodels)
 # install.packages('vetiver')
 # install.packages('pins')
 # install.packages('plumber')
+# install.packages('ranger')
 
 library(vetiver)
 library(pins)
@@ -23,6 +24,7 @@ housing_rec <- recipe(sale_price ~ .,
                       data = housing_training) %>% 
   step_YeoJohnson(all_numeric_predictors()) %>% 
   step_normalize(all_numeric_predictors()) %>% 
+  step_novel(all_nominal_predictors()) %>% 
   step_other(ms_sub_class,ms_zoning,exterior_1st,exterior_2nd,utilities,electrical) %>% 
   step_unknown(all_nominal_predictors()) %>%
   step_dummy(all_nominal_predictors()) %>% 
@@ -42,16 +44,26 @@ housing_wkfl <- workflow() %>%
 
 # What's first? (Or, I should say last?)
 
+finalized_model <- housing_wkfl %>% 
+  last_fit(split = housing_split)
 
 # Now we need to extract the trained workflow from the larger final fit result:
+
+trained_workflow <- extract_workflow(finalized_model)
+
 
 
 # And create from that (trained) workflow a deployable model object. 
 # We'll use vetiver for this. Give it a name, too.
+deployable_model <- vetiver_model(trained_workflow, 'housing_price')
 
 
 # Now let's create a plumber-based API server for local testing
 # pr(), vetiver_api(), pr_run()
+
+pr() %>% 
+  vetiver_api(deployable_model) %>% 
+  pr_run(port = 8888)
 
 
 
